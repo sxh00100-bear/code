@@ -1,0 +1,15 @@
+# 忽略 Python 虚拟环境
+.venv/
+venv/
+env/
+
+# 忽略数据集和模型权重
+data/
+checkpoints/
+*.pth
+*.pt
+
+# 忽略 Python 自动生成的缓存文件
+__pycache__/
+*.pyc
+.DS_Store
