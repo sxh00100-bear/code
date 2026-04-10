@@ -69,3 +69,36 @@ def test(model, testloader, device, criterion):
     avg_test_loss = test_loss / len(testloader)
     print(f'Test Loss: {avg_test_loss:.4f} | Test Acc: {test_acc:.2f}%')
     return avg_test_loss, test_acc
+
+
+def test_with_predictions(model, testloader, device, criterion):
+    model.eval()
+    test_loss = 0.0
+    correct = 0
+    total = 0
+
+    all_preds = []
+    all_targets = []
+
+    with torch.no_grad():
+        for inputs, targets in testloader:
+            inputs, targets = inputs.to(device), targets.to(device)
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+
+            test_loss += loss.item()
+            _, predicted = outputs.max(1)
+
+            total += targets.size(0)
+            correct += predicted.eq(targets).sum().item()
+
+            all_preds.append(predicted.cpu())
+            all_targets.append(targets.cpu())
+
+    avg_test_loss = test_loss / len(testloader)
+    test_acc = 100.0 * correct / total
+
+    all_preds = torch.cat(all_preds)
+    all_targets = torch.cat(all_targets)
+
+    return avg_test_loss, test_acc, all_preds, all_targets
