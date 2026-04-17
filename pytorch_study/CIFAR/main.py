@@ -1,13 +1,17 @@
 '''Train CIFAR10 with PyTorch.'''
+import argparse
+import os
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import os
+
 from engine import train, evaluate, test
 from data import get_data_loaders
-import argparse
 from checkpoint import save_checkpoint, load_checkpoint
 from model import build_model
+from utils import save_training_curves, write_metrics_csv
+
 
 def main():
     parser = argparse.ArgumentParser(description='PyTorch CIFAR10 ResNet Training')
@@ -59,20 +63,37 @@ def main():
     save_dir = os.path.join(args.save_dir, args.model)
     best_path = os.path.join(save_dir, 'best.pth')
     last_path = os.path.join(save_dir, 'last.pth')
+    metrics_path = os.path.join(save_dir, 'metrics.csv')
+    curves_path = os.path.join(save_dir, 'training_curves.png')
+    os.makedirs(save_dir, exist_ok=True)
+
     if args.resume is not None:
         model, optimizer, scheduler, start_epoch, best_acc = load_checkpoint(
             args.resume, model, device, optimizer, scheduler, expected_model_name=args.model
         )
         print(f'Resumed from {args.resume}, start_epoch={start_epoch}, will train {args.epochs} more epochs, best_acc={best_acc:.2f}')
 
+    metrics = []
     end_epoch = start_epoch + args.epochs 
     for epoch in range(start_epoch, end_epoch):
-        train_loss,train_acc=train(model, trainloader, device, criterion, optimizer)
+        lr = optimizer.param_groups[0]['lr']
+        train_loss, train_acc = train(model, trainloader, device, criterion, optimizer)
         val_loss, val_acc = evaluate(model, valloader, device, criterion)
         
         print('Epoch: %d | train Loss: %.3f | train Acc: %.3f%%' % 
                   (epoch, train_loss, train_acc))
         print ('Val Loss: %.3f | Val Acc: %.3f%%' % (val_loss, val_acc))
+
+        metrics.append({
+            'epoch': epoch,
+            'lr': lr,
+            'train_loss': train_loss,
+            'train_acc': train_acc,
+            'val_loss': val_loss,
+            'val_acc': val_acc,
+        })
+        write_metrics_csv(metrics, metrics_path)
+        save_training_curves(metrics, curves_path)
         
         
         if val_acc > best_acc:
@@ -103,6 +124,8 @@ def main():
     model, _, _, _, _ = load_checkpoint(best_path, model, device,expected_model_name=args.model)    
     avg_test_loss, test_acc = test(model, testloader, device, criterion)
     print(f'Final Test Loss: {avg_test_loss:.4f} | Final Test Acc: {test_acc:.2f}%')
+    print(f'Metrics saved to: {metrics_path}')
+    print(f'Training curves saved to: {curves_path}')
 
 if __name__ == '__main__':
     main()
