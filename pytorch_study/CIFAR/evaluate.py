@@ -26,6 +26,9 @@ def get_device():
 def compute_confusion_matrix(preds, targets, num_classes):
     cm = torch.zeros(num_classes, num_classes, dtype=torch.int64)
 
+    targets = targets.view(-1)
+    preds = preds.view(-1)
+    
     for t, p in zip(targets, preds):
         cm[t.item(), p.item()] += 1
 
